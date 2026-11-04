@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -16,7 +19,12 @@ def load_all():
     matrix = pd.read_csv("processed/user_item_matrix.csv", index_col=0)
     matrix.columns = matrix.columns.astype(int)
     svd_preds = np.load("reports/svd_predictions.npy")
-    pmf_preds = np.load("reports/pmf_predictions.npy")
+    U = np.load("reports/pmf_factors/U.npy")
+    V = np.load("reports/pmf_factors/V.npy")
+    metrics = json.loads(Path("reports/model_metrics.json").read_text())
+    slope = metrics.get("PMF_calib_slope", 1.0)
+    intercept = metrics.get("PMF_calib_intercept", 0.0)
+    pmf_preds = np.clip(slope * (U @ V.T) + intercept, 1, 5)
     return ratings, movies, matrix, svd_preds, pmf_preds
 
 
