@@ -83,11 +83,8 @@ reports/rmse_comparison.png
 reports/predicted_vs_actual.png
 reports/user_comparison.png
 reports/top_recommendations.png
-reports/eda_overview.png
 reports/matrix_sample.png
-reports/user_accuracy_comparison.png
 reports/user_<id>_recommendations.csv
-reports/user_<id>_recommendations.png
 ```
 
 Dataset: [MovieLens 1M](https://grouplens.org/datasets/movielens/1m/).
