@@ -85,11 +85,13 @@ def train_pmf(train, test, matrix, validation=None, factors=20, epochs=100,
     }
     with open(os.path.join(reports, "pmf_factors", "training_metadata.json"), "w") as file:
         json.dump(metadata, file, indent=2)
-
     test_users = matrix.index.get_indexer(test.UserID)
     test_items = matrix.columns.get_indexer(test.MovieID)
+    valid = (test_users >= 0) & (test_items >= 0)
+
     rmse = root_mean_squared_error(
-        test.Rating.to_numpy(), predictions[test_users, test_items]
-    )
+    test.Rating.to_numpy()[valid],
+    predictions[test_users[valid], test_items[valid]]
+)
 
     return predictions, rmse, train_history, validation_history
