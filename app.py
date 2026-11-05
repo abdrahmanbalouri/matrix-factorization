@@ -1,5 +1,4 @@
-import json
-from pathlib import Path
+"""Interactive Streamlit dashboard for the SVD and PMF recommenders."""
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,103 +8,116 @@ import streamlit as st
 from utils.data_loader import load_movielens_data
 from utils.recommendation import generate_recommendations
 
-st.set_page_config(page_title="Movie Recommender System", layout="wide")
-st.title("🎬 SVD vs PMF Movie Recommender")
+st.set_page_config(page_title="Movie Recommender", layout="wide")
+st.title("SVD vs PMF Movie Recommender")
 
 
 @st.cache_data
 def load_all():
+    """Load the ratings, movies, prediction matrices and movie details."""
     ratings, movies, _ = load_movielens_data("data")
     matrix = pd.read_csv("processed/user_item_matrix.csv", index_col=0)
     matrix.columns = matrix.columns.astype(int)
-    svd_preds = np.load("reports/svd_predictions.npy")
-    U = np.load("reports/pmf_factors/U.npy")
-    V = np.load("reports/pmf_factors/V.npy")
-    metrics = json.loads(Path("reports/model_metrics.json").read_text())
-    slope = metrics.get("PMF_calib_slope", 1.0)
-    intercept = metrics.get("PMF_calib_intercept", 0.0)
-    pmf_preds = np.clip(slope * (U @ V.T) + intercept, 1, 5)
-    return ratings, movies, matrix, svd_preds, pmf_preds
+    svd_predictions = np.load("reports/svd_predictions.npy")
+    pmf_predictions = np.load("reports/pmf_predictions.npy")
+    return ratings, movies, matrix, svd_predictions, pmf_predictions
 
 
-def top_genres(user_id, ratings, movies, n_genres=3):
+def top_genres(user_id, ratings, movies, n=3):
+    """Return the user's most rated genres."""
     history = ratings[ratings.UserID == user_id].merge(movies, on="MovieID")
-    return set(history.Genres.str.split("|").explode().value_counts().head(n_genres).index)
+    genres = history.Genres.str.split("|").explode()
+    return set(genres.value_counts().head(n).index)
 
 
-def add_reasons(recs, genres):
+def add_reason(recommendations, genres):
+    """Add one short sentence explaining each recommendation."""
+
     def explain(row):
         overlap = set(str(row.Genres).split("|")) & genres
         if overlap:
             return "Genre match: " + ", ".join(sorted(overlap))
-        return "High predicted rating from latent factors"
+        return "High latent-factor score"
 
-    return recs.assign(Reason=recs.apply(explain, axis=1))
+    return recommendations.assign(Reason=recommendations.apply(explain, axis=1))
 
 
 try:
-    ratings, movies, matrix, svd_preds, pmf_preds = load_all()
-    selected_user = st.sidebar.selectbox("Select User ID:", matrix.index.tolist())
-    manual_user = st.sidebar.text_input("Or enter a User ID manually:", "")
-    if manual_user.strip():
+    ratings, movies, matrix, svd_predictions, pmf_predictions = load_all()
+
+    selected = st.sidebar.selectbox("User ID:", matrix.index.tolist())
+    typed = st.sidebar.text_input("Or type a User ID:", "")
+
+    if typed.strip():
         try:
-            user_id = int(manual_user)
+            user_id = int(typed)
         except ValueError:
-            st.error("User ID must be an integer.")
+            st.error("User ID must be a whole number.")
             st.stop()
     else:
-        user_id = selected_user
+        user_id = selected
+
     if user_id not in matrix.index:
         st.error(f"Invalid user ID: {user_id}. Please choose a valid user.")
         st.stop()
 
-    svd_model = (svd_preds, matrix, movies, ratings)
-    pmf_model = (pmf_preds, matrix, movies, ratings)
+    svd_model = (svd_predictions, matrix, movies, ratings)
+    pmf_model = (pmf_predictions, matrix, movies, ratings)
     svd_recs = generate_recommendations(user_id, svd_model)
     pmf_recs = generate_recommendations(user_id, pmf_model)
+
     if svd_recs.empty or pmf_recs.empty:
-        st.error(f"No recommendations could be generated for user {user_id}.")
+        st.error(f"No recommendations available for user {user_id}.")
         st.stop()
 
     genres = top_genres(user_id, ratings, movies)
-    svd_recs = add_reasons(svd_recs, genres)
-    pmf_recs = add_reasons(pmf_recs, genres)
+    svd_recs = add_reason(svd_recs, genres)
+    pmf_recs = add_reason(pmf_recs, genres)
 
-    st.subheader(f"⭐ Top Rated Movies by User {user_id}")
+    st.subheader(f"Top rated movies by user {user_id}")
     history = ratings[ratings.UserID == user_id].merge(movies, on="MovieID")
-    top_history = history.sort_values("Rating", ascending=False).head(5)
-    st.dataframe(top_history[["Title", "Genres", "Rating"]], width="stretch")
-    st.caption("User's top genres: " + (", ".join(sorted(genres)) or "unknown"))
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("🔵 SVD Top 10")
-        st.dataframe(svd_recs[["Title", "Genres", "PredictedRating", "Reason"]], width="stretch")
-    with col2:
-        st.subheader("🟢 PMF Top 10")
-        st.dataframe(pmf_recs[["Title", "Genres", "PredictedRating", "Reason"]], width="stretch")
-
-    st.subheader("🧠 Why these PMF recommendations?")
-    reasons = pmf_recs.assign(
-        GenreMatch=pmf_recs.Genres.apply(lambda value: bool(set(str(value).split("|")) & genres))
+    st.dataframe(
+        history.sort_values("Rating", ascending=False)[["Title", "Genres", "Rating"]].head(5),
+        width="stretch",
     )
-    fig, ax = plt.subplots(figsize=(10, 4))
-    colors = reasons.GenreMatch.map({True: "#2ecc71", False: "#95a5a6"})
-    ax.barh(reasons.Title, reasons.PredictedRating, color=colors)
-    ax.invert_yaxis()
-    ax.set(xlabel="Predicted rating", ylabel="Movie", xlim=(0, 5.5))
-    ax.set_title("Green = matches a top genre, gray = driven by latent factors")
-    st.pyplot(fig, width="stretch")
-    plt.close(fig)
+    st.caption("Favorite genres: " + (", ".join(sorted(genres)) or "unknown"))
 
-    st.subheader(f"📊 SVD vs PMF Predictions — User {user_id}")
-    user_idx = matrix.index.get_loc(user_id)
-    fig, ax = plt.subplots(figsize=(12, 4))
-    ax.plot(svd_preds[user_idx, :100], label="SVD")
-    ax.plot(pmf_preds[user_idx, :100], label="PMF")
-    ax.set(xlabel="Movie index (first 100)", ylabel="Predicted rating")
-    ax.legend()
-    st.pyplot(fig, width="stretch")
-    plt.close(fig)
+    left, right = st.columns(2)
+    with left:
+        st.subheader("SVD recommendations")
+        st.dataframe(
+            svd_recs[["Title", "Genres", "PredictedRating", "Reason"]],
+            width="stretch",
+        )
+    with right:
+        st.subheader("PMF recommendations")
+        st.dataframe(
+            pmf_recs[["Title", "Genres", "PredictedRating", "Reason"]],
+            width="stretch",
+        )
+
+    st.subheader("Why these PMF recommendations?")
+    matches = pmf_recs.Genres.apply(
+        lambda value: bool(set(str(value).split("|")) & genres)
+    )
+    colors = matches.map({True: "#2ecc71", False: "#95a5a6"})
+    figure, axis = plt.subplots(figsize=(10, 4))
+    axis.barh(pmf_recs.Title, pmf_recs.PredictedRating, color=colors)
+    axis.invert_yaxis()
+    axis.set(xlabel="Predicted rating", ylabel="Movie", xlim=(0, 5.5))
+    axis.set_title("Green = favorite genre, gray = latent-factor match")
+    st.pyplot(figure, width="stretch")
+    plt.close(figure)
+
+    st.subheader(f"SVD vs PMF predictions for user {user_id}")
+    user_index = matrix.index.get_loc(user_id)
+    figure, axis = plt.subplots(figsize=(12, 4))
+    axis.plot(svd_predictions[user_index, :100], label="SVD")
+    axis.plot(pmf_predictions[user_index, :100], label="PMF")
+    axis.set(xlabel="Movie index (first 100)", ylabel="Predicted rating")
+    axis.legend()
+    st.pyplot(figure, width="stretch")
+    plt.close(figure)
+
 except Exception as error:
-    st.error(f"Run the notebook first to train the models. Details: {error}")
+    st.error(f"Could not load the models. Run the notebook first. Details: {error}")
