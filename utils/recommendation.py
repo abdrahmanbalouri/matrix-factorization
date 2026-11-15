@@ -29,16 +29,7 @@ def favorite_genres(user_id, ratings, movies, n=3):
     return set(history.Genres.str.split("|").explode().value_counts().head(n).index)
 
 
-def add_reasons(recommendations, genres):
-    """Add a short reason to every recommended movie."""
 
-    def explain(row):
-        overlap = set(str(row.Genres).split("|")) & genres
-        if overlap:
-            return "Genre match: " + ", ".join(sorted(overlap))
-        return "High latent-factor score"
-
-    return recommendations.assign(Reason=recommendations.apply(explain, axis=1))
 
 
 def save_user_recommendations(user_id, rec_df, reports_dir="reports"):
