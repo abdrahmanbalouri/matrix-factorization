@@ -53,8 +53,7 @@ try:
         st.stop()
 
     genres = favorite_genres(user_id, ratings, movies)
-    svd_recs = add_reasons(svd_recs, genres)
-    pmf_recs = add_reasons(pmf_recs, genres)
+  
 
     st.subheader(f"Top rated movies by user {user_id}")
     history = ratings[ratings.UserID == user_id].merge(movies, on="MovieID")
