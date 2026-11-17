@@ -30,11 +30,10 @@ def load_all():
 try:
     ratings, movies, matrix, svd_predictions, pmf_predictions = load_all()
 
-    selected = st.sidebar.selectbox("User ID:", matrix.index.tolist())
     typed = st.sidebar.text_input("Or type a User ID:", "")
 
     try:
-        user_id = int(typed) if typed.strip() else selected
+        user_id = int(typed) 
     except ValueError:
         st.error("User ID must be a whole number.")
         st.stop()
