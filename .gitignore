@@ -1,4 +1,15 @@
 venv/
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.streamlit/
+.DS_Store
+
+# Large / generated files (do not push)
+data/
+processed/
+reports/
+*.npy
+*.csv
+*.dat
