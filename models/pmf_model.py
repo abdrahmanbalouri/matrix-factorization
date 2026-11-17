@@ -90,8 +90,8 @@ def train_pmf(train, test, matrix, validation=None, factors=20, epochs=100,
     valid = (test_users >= 0) & (test_items >= 0)
 
     rmse = root_mean_squared_error(
-    test.Rating.to_numpy()[valid],
-    predictions[test_users[valid], test_items[valid]]
-)
+        test.Rating.to_numpy()[valid],
+        predictions[test_users[valid], test_items[valid]],
+    )
 
     return predictions, rmse, train_history, validation_history

@@ -30,10 +30,14 @@ def load_all():
 try:
     ratings, movies, matrix, svd_predictions, pmf_predictions = load_all()
 
-    typed = st.sidebar.text_input("Or type a User ID:", "")
+    typed = st.sidebar.text_input("Or type a User ID:", "1680").strip()
+
+    if not typed:
+        st.info("Enter a User ID to see recommendations.")
+        st.stop()
 
     try:
-        user_id = int(typed) 
+        user_id = int(typed)
     except ValueError:
         st.error("User ID must be a whole number.")
         st.stop()

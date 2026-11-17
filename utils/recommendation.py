@@ -29,9 +29,6 @@ def favorite_genres(user_id, ratings, movies, n=3):
     return set(history.Genres.str.split("|").explode().value_counts().head(n).index)
 
 
-
-
-
 def save_user_recommendations(user_id, rec_df, reports_dir="reports"):
     """Save a user's recommendations as a CSV file."""
     os.makedirs(reports_dir, exist_ok=True)

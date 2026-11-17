@@ -90,8 +90,12 @@ matrix-factorization/
 | numba | 0.68.1 | JIT-compiled SGD loop |
 | matplotlib | 3.11.2 | all report figures |
 | streamlit | 1.66.1 | interactive dashboard |
+| jupyter_core / jupyter_client | 5.9.1 / 8.10.0 | Jupyter kernel plumbing |
+| ipykernel | 7.4.0 | Python kernel for the notebook |
+| nbformat / nbconvert | 5.11.1 / 7.17.2 | read and execute the notebook headlessly |
+| notebook | 7.6.5 | `jupyter notebook` interface |
 
-> Note: Jupyter is **not** listed in `requirements.txt`; if you do not already have it, install it as described below.
+> Jupyter tooling is pinned in `requirements.txt`, so step 2 below installs everything needed for the notebook and the dashboard.
 
 ---
 
@@ -102,11 +106,10 @@ matrix-factorization/
 python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 
-# 2. Install the pinned dependencies
+# 2. Install the pinned dependencies (Jupyter included)
 pip install -r requirements.txt
 
-# 3. (Only if you don't already have Jupyter)
-pip install jupyter nbconvert ipykernel
+# 3. Keep using this venv for the notebook and the dashboard
 ```
 
 The dataset files must be placed in `data/`:
@@ -126,7 +129,7 @@ ratings (keeping the last), duplicate movies/users, and any missing rows.
 
 ## How to run everything
 
-The project has **two stages**: first generate the artifacts with the notebook, then launch the dashboard. The dashboard cannot work until stage 1 has been run at least once.
+The project has **two stages**: first generate the artifacts with the notebook, then launch the dashboard. The dashboard cannot work until stage 1 has been run at least once. Activate the virtual environment first (`source venv/bin/activate`) so `python`, `jupyter` and `streamlit` resolve correctly.
 
 ### Stage 1 — Train the models and generate reports
 
@@ -159,6 +162,8 @@ When it finishes, check that `processed/user_item_matrix.csv`, the files in
 `reports/`, and `model_metrics.json` exist.
 
 ### Stage 2 — Launch the dashboard
+
+Activate the same virtual environment first (`source venv/bin/activate`), then run:
 
 ```bash
 streamlit run app.py
@@ -353,6 +358,14 @@ the notebook first."* — follow [Stage 1](#stage-1--train-the-models-and-genera
 
 ---
 
+## Audit prep: questions to answer without reading the code
+
+- **SVD:** explain the baseline (global mean + user bias + movie bias), the rank-30 factorization of the centered residuals with `svds`, and the final prediction `clip((U * sigma) @ Vt + baseline, 1, 5)`.
+- **PMF training and convergence:** SGD over observed ratings on `U·V` with L2 shrinkage; read training/validation MSE in `reports/pmf_convergence.png` and stop at 100 epochs, where validation flattens.
+- **Why PMF can beat SVD:** it optimizes the ratings directly (with regularization and a small ensemble) instead of keeping only the strongest linear directions; L2 keeps factors small so the model does not memorize noise.
+- **Predicting for a user:** inspect their rating history/genres, then find unseen movies with the highest value in that user's row of the saved prediction matrices.
+- **Invalid user IDs:** the dashboard checks that the input is an integer and exists in the matrix index, shows an error, and stops without crashing.
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -360,8 +373,8 @@ the notebook first."* — follow [Stage 1](#stage-1--train-the-models-and-genera
 | `FileNotFoundError` for `ratings.dat` etc. | Put the three MovieLens 1M files in `data/` (see [Installation](#installation)). |
 | `Could not load the models. Run the notebook first.` | Run all notebook cells (or nbconvert) before starting Streamlit. |
 | `Invalid user ID` / `User ID must be a whole number.` | Enter an integer that exists in the dataset (1–6040, e.g. 1680). |
-| `python: command not found` | Use `python3`, and activate the virtual environment first. |
-| Jupyter not found | `pip install jupyter nbconvert ipykernel`. |
+| `python` / `streamlit`: command not found | Activate the venv first (`source venv/bin/activate`), then use `python` and `streamlit` normally. |
+| Jupyter not found | Activate the venv and run `pip install -r requirements.txt` (Jupyter is pinned there). |
 | NumPy 2.x / Numba compatibility errors | Install exactly the versions in `requirements.txt` inside a fresh venv. |
 | Slow PMF training | It is a ~100-epoch SGD loop over ~900k ratings × 5 members; let it finish once, the artifacts are then reused by the dashboard. |
 
