@@ -8,6 +8,7 @@ __pycache__/
 
 # Large / generated files (do not push)
 
-
-
-
+reports/
+*.npy
+*.csv
+*.dat
