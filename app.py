@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from utils.data_loader import load_movielens_data
-from utils.recommendation import add_reasons, favorite_genres, generate_recommendations
+from utils.recommendation import favorite_genres, generate_recommendations
 
 st.set_page_config(page_title="Movie Recommender", layout="wide")
 st.title("SVD vs PMF Movie Recommender")
@@ -67,13 +67,13 @@ try:
     with left:
         st.subheader("SVD recommendations")
         st.dataframe(
-            svd_recs[["Title", "Genres", "PredictedRating", "Reason"]],
+            svd_recs[["Title", "Genres", "PredictedRating"]],
             width="stretch",
         )
     with right:
         st.subheader("PMF recommendations")
         st.dataframe(
-            pmf_recs[["Title", "Genres", "PredictedRating", "Reason"]],
+            pmf_recs[["Title", "Genres", "PredictedRating"]],
             width="stretch",
         )
 
